@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Merger App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: linear-gradient(to right, #4a90e2, #50bfe6);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        section {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px solid #4a90e2;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(to right, #ff7f50, #ff6f61);
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(to right, #ff6f61, #ff7f50);
+        }
+
+        #downloadLink {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 15px;
+            background: linear-gradient(to right, #4caf50, #81c784);
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 16px;
+        }
+
+        #downloadLink:hover {
+            background: linear-gradient(to right, #388e3c, #66bb6a);
+        }
+
+        footer {
+            margin-top: 30px;
+            padding: 15px;
+            background: #e0e0e0;
+        }
+
+        footer p {
+            margin: 5px 0;
+        }
+
+        footer a {
+            display: inline-block;
+            padding: 10px 15px;
+            font-size: 16px;
+            background: linear-gradient(to right, #4caf50, #81c784);
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s ease;
+        }
+
+        footer a:hover {
+            background: linear-gradient(to right, #388e3c, #66bb6a);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Excel Merger App</h1>
+    </header>
+    <section>
+        <h2>Merge Excel Sheets by Sheet Names</h2>
+        <p>Upload multiple Excel files to merge sheets with similar names and column names.</p>
+        <input type="file" id="uploadExcel" multiple accept=".xlsx" />
+        <button onclick="mergeSheets()">Merge Sheets</button>
+        <a id="downloadLink" style="display:none;">Download Merged File</a>
+    </section>
+    <footer>
+        <p>Created by <strong>Bala</strong> – An Excel Enthusiast and Data Analyst</p>
+        <p>
+            <a href="https://medium.com/@kbala7092" target="_blank">Visit My Medium Blog</a>
+        </p>
+    </footer>
+
+    <script>
+        let excelFiles = [];
+
+        document.getElementById("uploadExcel").addEventListener("change", (event) => {
+            excelFiles = event.target.files;
+        });
+
+        async function mergeSheets() {
+            if (excelFiles.length === 0) {
+                alert("Please upload Excel files.");
+                return;
+            }
+
+            const mergedWorkbook = new ExcelJS.Workbook();
+            const headerFormats = {};
+
+            for (const file of excelFiles) {
+                const buffer = await file.arrayBuffer();
+                const workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(buffer);
+
+                workbook.eachSheet((sheet) => {
+                    const sheetName = sheet.name;
+
+                    // If sheet not merged yet, initialize it
+                    if (!mergedWorkbook.getWorksheet(sheetName)) {
+                        const newSheet = mergedWorkbook.addWorksheet(sheetName);
+
+                        // Copy header with formatting
+                        const headerRow = sheet.getRow(1);
+                        const newHeaderRow = newSheet.addRow(headerRow.values);
+                        headerRow.eachCell((cell, colNumber) => {
+                            const newCell = newHeaderRow.getCell(colNumber);
+                            newCell.style = { ...cell.style }; // Copy style
+                        });
+                        headerFormats[sheetName] = newHeaderRow.style; // Save styles
+                    }
+
+                    // Copy data rows
+                    sheet.eachRow((row, rowNumber) => {
+                        if (rowNumber > 1) {
+                            const newRow = mergedWorkbook.getWorksheet(sheetName).addRow(row.values);
+                            row.eachCell((cell, colNumber) => {
+                                newRow.getCell(colNumber).style = { ...cell.style }; // Copy style
+                            });
+                        }
+                    });
+                });
+            }
+
+            // Write merged workbook to a file
+            const blob = await mergedWorkbook.xlsx.writeBuffer();
+            const link = document.getElementById("downloadLink");
+            link.href = URL.createObjectURL(new Blob([blob], { type: "application/octet-stream" }));
+            link.download = "MergedExcel_with_Formats.xlsx";
+            link.style.display = "block";
+            link.innerText = "Download Merged File";
+        }
+    </script>
+</body>
+</html>
